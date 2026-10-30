@@ -1,0 +1,12 @@
+# User-provided resumes and other runtime uploads
+uploads/
+**/uploads/
+upload/
+**/upload/
+
+# Python-generated files
+__pycache__/
+*.py[cod]
+
+# Keep this local-only interview-preparation document out of the repository
+docs/AI_Resume_Screening_System_Interview_Guide.docx

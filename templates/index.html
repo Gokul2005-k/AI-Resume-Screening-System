@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Screening System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="page-shell">
+        <section class="hero">
+            <div class="hero-copy">
+                <span class="eyebrow">NLP + Machine Learning - July 2026</span>
+                <h1>AI Resume Screening System</h1>
+                <p>Upload a resume and select a job-role template. The system calculates match score, matching skills, and missing skills using TF-IDF and cosine similarity.</p>
+            </div>
+        </section>
+
+        <section class="workspace" id="screening">
+            <form method="post" enctype="multipart/form-data" class="input-panel" action="/#results">
+                <div class="section-title">
+                    <h2>Screen Resume For A Job Role</h2>
+                    <p>Upload a resume and select the target role. No job-description typing is needed.</p>
+                </div>
+
+                {% if error %}
+                    <div class="alert alert-warning">{{ error }}</div>
+                {% endif %}
+
+                <div class="upload-row">
+                    <div class="field-card">
+                        <label for="resume_file">Upload Resume</label>
+                        <input id="resume_file" name="resume_file" type="file" accept=".txt,.pdf,.docx">
+                        <small>Supported formats: TXT, PDF, DOCX</small>
+                        {% if uploaded_filename %}
+                            <div class="file-chip">{{ uploaded_filename }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="field-card">
+                        <label for="job_role">Select Job Role</label>
+                        <select id="job_role" name="job_role" required>
+                            {% for key, template in job_templates.items() %}
+                                <option value="{{ key }}" {% if key == selected_role %}selected{% endif %}>
+                                    {{ template.title }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <small>The system uses a standard role template for consistent screening.</small>
+                    </div>
+                </div>
+
+                <details class="fallback-box" {% if error and not resume_text %}open{% endif %}>
+                    <summary>Manual resume text fallback</summary>
+                    <div class="single-input">
+                        <div class="field-card">
+                            <label for="resume_text">Resume Text</label>
+                            <textarea
+                                id="resume_text"
+                                name="resume_text"
+                                placeholder="Paste resume text here only if PDF/DOCX extraction is weak."
+                            >{{ resume_text }}</textarea>
+                        </div>
+                    </div>
+                </details>
+
+                <div class="form-actions">
+                    <button class="primary-btn" type="submit">Screen Resume</button>
+                    <a class="secondary-btn" href="/">Clear</a>
+                </div>
+            </form>
+
+            {% if result %}
+            <section class="results-panel" id="results">
+                <div class="result-heading">
+                    <div class="section-title">
+                        <h2>ATS Match Report</h2>
+                        <p>{{ result.selected_role }} - {{ result.score_label }} - {{ result.recommendation }}</p>
+                    </div>
+                    <a class="secondary-btn" href="/">New Screening</a>
+                </div>
+
+                <div class="metrics-grid">
+                    <article class="metric-card metric-card-primary">
+                        <span>ATS Score</span>
+                        <strong>{{ result.ats_score }}%</strong>
+                    </article>
+                    <article class="metric-card">
+                        <span>Semantic Match</span>
+                        <strong>{{ result.similarity_score }}%</strong>
+                    </article>
+                    <article class="metric-card">
+                        <span>Skill Coverage</span>
+                        <strong>{{ result.skill_coverage }}%</strong>
+                    </article>
+                    <article class="metric-card">
+                        <span>Readability</span>
+                        <strong>{{ result.readability_score }}%</strong>
+                    </article>
+                </div>
+
+                <div class="results-grid">
+                    <article class="result-block result-block-wide">
+                        <h3>Priority Fixes</h3>
+                        <ol class="result-list">
+                            {% for item in result.priority_fixes %}
+                                <li>{{ item }}</li>
+                            {% endfor %}
+                        </ol>
+                    </article>
+
+                    <article class="result-block">
+                        <h3>Matched Skills</h3>
+                        <div class="tag-cloud">
+                            {% if result.matched_skills %}
+                                {% for skill in result.matched_skills %}
+                                    <span class="tag tag-good">{{ skill }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <p class="muted">No strong direct matches found yet.</p>
+                            {% endif %}
+                        </div>
+                    </article>
+
+                    <article class="result-block">
+                        <h3>Missing Skills</h3>
+                        <div class="tag-cloud">
+                            {% if result.missing_skills %}
+                                {% for skill in result.missing_skills %}
+                                    <span class="tag tag-missing">{{ skill }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <p class="muted">No major gaps detected.</p>
+                            {% endif %}
+                        </div>
+                    </article>
+
+                    <article class="result-block">
+                        <h3>Missing Keywords</h3>
+                        <div class="tag-cloud">
+                            {% if result.missing_keywords %}
+                                {% for keyword in result.missing_keywords %}
+                                    <span class="tag tag-neutral">{{ keyword }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <p class="muted">Keyword overlap looks healthy.</p>
+                            {% endif %}
+                        </div>
+                    </article>
+
+                    <article class="result-block">
+                        <h3>ATS Readability Checks</h3>
+                        <ul class="check-list">
+                            {% for check in result.formatting_checks %}
+                                <li>
+                                    <strong>{{ check.label }}</strong>
+                                    <span class="{{ 'status-good' if check.status == 'Passed' else 'status-bad' }}">{{ check.status }}</span>
+                                    <p>{{ check.detail }}</p>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </article>
+
+                    <article class="result-block">
+                        <h3>Suggestions</h3>
+                        <ul class="result-list">
+                            {% for item in result.suggestions %}
+                                <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </article>
+
+                    <article class="result-block">
+                        <h3>Better Resume Wording</h3>
+                        <ul class="result-list">
+                            {% for item in result.rewrite_examples %}
+                                <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </article>
+
+                    <article class="result-block">
+                        <h3>Resume Length</h3>
+                        <p class="muted">{{ result.word_count }} words. {{ result.length_message }}</p>
+                    </article>
+                </div>
+            </section>
+            {% endif %}
+        </section>
+    </div>
+</body>
+</html>
